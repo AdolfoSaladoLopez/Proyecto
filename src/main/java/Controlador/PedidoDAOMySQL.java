@@ -16,6 +16,7 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
     public static ArrayList<Producto> listadoProductos = new ArrayList<>();
     public static ArrayList<String> tipos = new ArrayList<>();
 
+    /*** SENTENCIAS SQL ***/
     /* SENTENCIAS PRODUCTO */
     private static final String OBTENER_LISTADO_PRODUCTOS_QUERY = """
             SELECT * FROM producto
@@ -120,6 +121,11 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
                 WHERE estado = "Pendiente";
             """;
 
+    private static final String INSERTAR_NUEVO_PEDIDO = """
+            INSERT INTO pedido (cliente, estado) VALUES ((?), (?));
+            """;
+
+    /* METODOS DE PRODUCTO */
     @Override
     public ArrayList<Producto> obtenerProductosCarta() {
 
@@ -346,385 +352,6 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private void setearValoresProducto(ResultSet rs, Producto producto) throws SQLException {
-        producto.setIdProducto(rs.getInt("id_producto"));
-        producto.setNombreProducto(rs.getString("nombre"));
-        producto.setTipoProducto(rs.getString("tipo"));
-        producto.setPrecioProducto(rs.getFloat("precio"));
-        producto.setDisponibilidadProducto(rs.getBoolean("disponibilidad"));
-    }
-
-    @Override
-    public Boolean insertarNuevoPedido(Pedido nuevoPedido) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public Boolean cambiarEstadoARecogido(Integer id) {
-        Boolean resultado = false;
-
-        try (var ps = conexion.prepareStatement(CAMBIAR_ESTADO_A_RECOGIDO)) {
-            ps.setInt(1, id);
-
-            if (ps.executeUpdate() == 1) {
-                resultado = true;
-            }
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        return resultado;
-    }
-
-    @Override
-    public void eliminarPedido(Pedido pedido) {
-
-    }
-
-    @Override
-    public ArrayList<Pedido> verPedidosPendientesHoy() {
-        var pedidosPendientesHoy = new ArrayList<Pedido>();
-
-        try (var st = conexion.createStatement()) {
-            var rs = st.executeQuery(VER_PEDIDOS_HOY_QUERY);
-
-            while (rs.next()) {
-                var pedido = new Pedido();
-
-                setearValoresPedido(rs, pedido);
-
-                pedidosPendientesHoy.add(pedido);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        return pedidosPendientesHoy;
-    }
-
-    @Override
-    public ArrayList<Pedido> verPedidosUsuarioConcreto(String nombre) {
-        var listadoPedidos = new ArrayList<Pedido>();
-
-        try (var ps = conexion.prepareStatement(TRAER_PEDIDOS_CLIENTE_CONCRETO)) {
-            ps.setString(1, nombre);
-
-            var rs = ps.executeQuery();
-
-            while (rs.next()) {
-                var pedido = new Pedido();
-                setearValoresPedido(rs, pedido);
-
-                var listaProducto = new ArrayList<Producto>(dao.obtenerProductosPedido(pedido.getIdPedido()));
-                pedido.setListaProductos(listaProducto);
-
-                listadoPedidos.add(pedido);
-
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        return listadoPedidos;
-    }
-
-    @Override
-    public ArrayList<String> verClientes() {
-        var listadoClientes = new ArrayList<String>();
-
-        try (var st = conexion.createStatement()) {
-            var rs = st.executeQuery(TRAER_CLIENTES_QUERY);
-
-            while (rs.next()) {
-                listadoClientes.add(rs.getString("cliente"));
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-
-        return listadoClientes;
-    }
-
-    @Override
-    public void mostrarListadoPedidos() {
-        var listadoPedidos = new ArrayList<Pedido>();
-
-        try (var st = conexion.createStatement()) {
-            ResultSet rs = st.executeQuery(MOSTRAR_TOTAL_PEDIDOS);
-
-            while (rs.next()) {
-                var ped = new Pedido();
-                setearValoresPedido(rs, ped);
-
-                var productos = new ArrayList<Producto>(dao.obtenerProductosPedido(ped.getIdPedido()));
-                ped.setListaProductos(productos);
-
-                listadoPedidos.add(ped);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-
-        listadoPedidos.forEach(
-                pedido -> System.out.println("Pedido con ID " + pedido.getIdPedido() + ": " +
-                        "\n\t- Cliente: " + pedido.getNombreCliente() +
-                        "\n\t- Fecha del pedido: " + pedido.getFechaPedido() +
-                        "\n\t- Estado: " + pedido.getEstadoPedido())
-        );
-    }
-
-    private static void setearValoresPedido(ResultSet rs, Pedido ped) throws SQLException {
-        ped.setIdPedido(rs.getInt("id_pedido"));
-        ped.setFechaPedido(rs.getDate("fecha"));
-        ped.setNombreCliente(rs.getString("cliente"));
-        ped.setEstadoPedido(rs.getString("estado"));
-    }
-
-    @Override
-    public Pedido traerPedidoPorId(Integer id_pedido) {
-        var pedido = new Pedido();
-
-        try (var ps = conexion.prepareStatement(TRAER_PEDIDO_POR_ID)) {
-            var rs = ps.executeQuery();
-
-            pedido.setIdPedido(rs.getInt("id_pedido"));
-            pedido.setFechaPedido(rs.getDate("fecha"));
-            pedido.setNombreCliente(rs.getString("cliente"));
-
-            var listaProductos = new ArrayList<Producto>(dao.obtenerProductosPedido(pedido.getIdPedido()));
-            pedido.setListaProductos(listaProductos);
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        return pedido;
-    }
-
-    @Override
-    public ArrayList<Pedido> traerPedidosPendientes() {
-        var pedidosPendientes = new ArrayList<Pedido>();
-
-        try (var st = conexion.createStatement()) {
-            ResultSet rs = st.executeQuery(TRAER_PEDIDOS_PENDIENTES);
-
-            while (rs.next()) {
-                var pedido = new Pedido();
-
-                setearValoresPedido(rs, pedido);
-
-                pedidosPendientes.add(pedido);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        return pedidosPendientes;
-    }
-
-
-    public void switchMenuProducto() {
-        var sc = new Scanner(System.in);
-
-        Integer opcion = 1;
-
-        while (opcion != 0) {
-            menuProducto();
-            opcion = sc.nextInt();
-
-            switch (opcion) {
-                case 1:
-                    listarProductos();
-                    break;
-                case 2:
-                    mostrarInformacionProductoConcreto(sc);
-                    break;
-                case 3:
-                    listarProductosDisponibles();
-
-                    break;
-                case 4:
-                    listarProductosNoDisponibles();
-
-                    break;
-                case 5:
-                    insertarNuevoProducto(sc);
-
-                    break;
-                case 6:
-                    actualizarProducto();
-
-                    break;
-                case 7:
-                    cambiarEstadoProducto();
-
-                    break;
-
-                case 8:
-                    menuEstadisticasProducto();
-
-                    break;
-                case 0:
-                    limpiarPantalla();
-                    dao.mostrarMenuPrincipal();
-                    break;
-
-                default:
-                    System.out.println("Elección incorrecta.");
-                    pulsarTeclaContinuar();
-            }
-
-        }
-    }
-
-    public void switchMenuPedido() {
-        var sc = new Scanner(System.in);
-
-        var opcion = 6;
-
-        while (opcion != 0) {
-            menuPedido();
-            opcion = sc.nextInt();
-
-            switch (opcion) {
-                case 0:
-                    limpiarPantalla();
-                    mostrarMenuPrincipal();
-                    break;
-                case 1:
-                    mostrarListadoPedidos();
-                    pulsarTeclaContinuar();
-                    limpiarPantalla();
-                    opcion = 6;
-                    break;
-                case 2:
-                    opcion = opcionMostrarPedidoCliente(sc, opcion);
-                    pulsarTeclaContinuar();
-                    limpiarPantalla();
-                    opcion = 6;
-                    break;
-                case 3:
-                    opcionVerPedidosPendientesHoy();
-                    pulsarTeclaContinuar();
-                    limpiarPantalla();
-                    opcion = 6;
-                    break;
-                case 4:
-                    opcion = opcionCambiarEstadoARecogido(sc, opcion);
-                    pulsarTeclaContinuar();
-                    limpiarPantalla();
-                    opcion = 6;
-                    break;
-                case 5:
-                    pulsarTeclaContinuar();
-                    limpiarPantalla();
-                    break;
-            }
-
-        }
-    }
-
-    private static boolean insertarNuevoPedido() {
-        Boolean comprobadorPedidoCorrecto = false;
-        Boolean comprobadorValoresCorrectos = false;
-        var escaner = new Scanner(System.in);
-
-        /* Variables que añadir a la consulta */
-        String cliente = "";
-
-
-        limpiarPantalla();
-        while (!comprobadorPedidoCorrecto) {
-            System.out.println("Menú para insertar un nuevo producto.");
-            System.out.print("Introduzca su nombre: ");
-            cliente = escaner.next();
-            System.out.println();
-
-
-
-        }
-
-
-
-        return comprobadorPedidoCorrecto;
-    }
-    private static void opcionVerPedidosPendientesHoy() {
-        var pedidosPendientes = new ArrayList<Pedido>(dao.verPedidosPendientesHoy());
-
-        if (pedidosPendientes.size() > 0) {
-            pedidosPendientes.forEach(
-                    pedido -> System.out.println("Pedido con ID " + pedido.getIdPedido() + ": " +
-                            "\n\t- Cliente: " + pedido.getNombreCliente() +
-                            "\n\t- Fecha del pedido: " + pedido.getFechaPedido() +
-                            "\n\t- Estado: " + pedido.getEstadoPedido())
-            );
-        } else {
-            System.out.println("Actualmente no contamos con pedidos pendientes.");
-        }
-    }
-
-    private int opcionCambiarEstadoARecogido(Scanner sc, int opcion) {
-
-        limpiarPantalla();
-        var pedidosPendientes = new ArrayList<Pedido>(dao.traerPedidosPendientes());
-
-        if (pedidosPendientes.size() > 0) {
-            pedidosPendientes.forEach(
-                    pedido -> System.out.println("Pedido con ID " + pedido.getIdPedido() + ": " +
-                            "\n\t- Cliente: " + pedido.getNombreCliente() +
-                            "\n\t- Fecha del pedido: " + pedido.getFechaPedido() +
-                            "\n\t- Estado: " + pedido.getEstadoPedido())
-            );
-            System.out.println("Seleccione el ID del pedido: ");
-            opcion = sc.nextInt();
-
-            if (cambiarEstadoARecogido(opcion)) {
-                System.out.println("El estado el pedido ha sido modificado con éxito");
-            } else {
-                System.out.println("No se ha podido modificar el estado del pedido.");
-            }
-        } else {
-            System.out.println("Actualmente no existen pedidos pendientes.");
-        }
-
-        return opcion;
-    }
-
-    private int opcionMostrarPedidoCliente(Scanner sc, int opcion) {
-        limpiarPantalla();
-        var listadoClientes = new ArrayList<String>(verClientes());
-
-        var comprobador = false;
-
-        while (!comprobador) {
-            System.out.println("Listado de clientes: ");
-
-            for (int i = 0; i < listadoClientes.size(); i++) {
-                System.out.println((i + 1) + ".- " + listadoClientes.get(i));
-            }
-            System.out.print("Seleccione una opción: ");
-            opcion = sc.nextInt();
-            opcion -= 1;
-
-            if (opcion >= 0 && opcion < listadoClientes.size()) {
-                comprobador = true;
-            } else {
-                System.out.println("Ha elegido una opción incorrecta.");
-            }
-        }
-
-        limpiarPantalla();
-        var listadoPedidos = new ArrayList<Pedido>(verPedidosUsuarioConcreto(listadoClientes.get(opcion)));
-        System.out.println("El usuario " + listadoClientes.get(opcion) + " cuenta con " + listadoPedidos.size() + " pedidos en nuestra base de datos.");
-        for (Pedido pedido : listadoPedidos) {
-            System.out.println("\nPedido con ID " + pedido.getIdPedido() + ": " +
-                    "\n\t- Fecha del pedido: " + pedido.getFechaPedido() +
-                    "\n\t- Estado del pedido: " + pedido.getEstadoPedido() +
-                    "\n\t- Productos: ");
-            for (Producto producto : pedido.getListaProductos()) {
-                System.out.println("\t\t- " + producto.getNombreProducto() + " - Precio: " + producto.getPrecioProducto());
-            }
-        }
-        return opcion;
     }
 
     private static void cambiarEstadoProducto() {
@@ -1043,6 +670,331 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
                         .println("\t" + producto.getIdProducto() + ".- " + producto.getNombreProducto()));
     }
 
+    private void setearValoresProducto(ResultSet rs, Producto producto) throws SQLException {
+        producto.setIdProducto(rs.getInt("id_producto"));
+        producto.setNombreProducto(rs.getString("nombre"));
+        producto.setTipoProducto(rs.getString("tipo"));
+        producto.setPrecioProducto(rs.getFloat("precio"));
+        producto.setDisponibilidadProducto(rs.getBoolean("disponibilidad"));
+    }
+
+    /* MÉTODOS PEDIDOS */
+    @Override
+    public Boolean insertarNuevoPedido(Pedido nuevoPedido) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Boolean cambiarEstadoARecogido(Integer id) {
+        Boolean resultado = false;
+
+        try (var ps = conexion.prepareStatement(CAMBIAR_ESTADO_A_RECOGIDO)) {
+            ps.setInt(1, id);
+
+            if (ps.executeUpdate() == 1) {
+                resultado = true;
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return resultado;
+    }
+
+    @Override
+    public void eliminarPedido(Pedido pedido) {
+
+    }
+
+    @Override
+    public ArrayList<Pedido> verPedidosPendientesHoy() {
+        var pedidosPendientesHoy = new ArrayList<Pedido>();
+
+        try (var st = conexion.createStatement()) {
+            var rs = st.executeQuery(VER_PEDIDOS_HOY_QUERY);
+
+            while (rs.next()) {
+                var pedido = new Pedido();
+
+                setearValoresPedido(rs, pedido);
+
+                pedidosPendientesHoy.add(pedido);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return pedidosPendientesHoy;
+    }
+
+    @Override
+    public ArrayList<Pedido> verPedidosUsuarioConcreto(String nombre) {
+        var listadoPedidos = new ArrayList<Pedido>();
+
+        try (var ps = conexion.prepareStatement(TRAER_PEDIDOS_CLIENTE_CONCRETO)) {
+            ps.setString(1, nombre);
+
+            var rs = ps.executeQuery();
+
+            while (rs.next()) {
+                var pedido = new Pedido();
+                setearValoresPedido(rs, pedido);
+
+                var listaProducto = new ArrayList<Producto>(dao.obtenerProductosPedido(pedido.getIdPedido()));
+                pedido.setListaProductos(listaProducto);
+
+                listadoPedidos.add(pedido);
+
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return listadoPedidos;
+    }
+
+    @Override
+    public ArrayList<String> verClientes() {
+        var listadoClientes = new ArrayList<String>();
+
+        try (var st = conexion.createStatement()) {
+            var rs = st.executeQuery(TRAER_CLIENTES_QUERY);
+
+            while (rs.next()) {
+                listadoClientes.add(rs.getString("cliente"));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return listadoClientes;
+    }
+
+    @Override
+    public void mostrarListadoPedidos() {
+        var listadoPedidos = new ArrayList<Pedido>();
+
+        try (var st = conexion.createStatement()) {
+            ResultSet rs = st.executeQuery(MOSTRAR_TOTAL_PEDIDOS);
+
+            while (rs.next()) {
+                var ped = new Pedido();
+                setearValoresPedido(rs, ped);
+
+                var productos = new ArrayList<Producto>(dao.obtenerProductosPedido(ped.getIdPedido()));
+                ped.setListaProductos(productos);
+
+                listadoPedidos.add(ped);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        listadoPedidos.forEach(
+                pedido -> System.out.println("Pedido con ID " + pedido.getIdPedido() + ": " +
+                        "\n\t- Cliente: " + pedido.getNombreCliente() +
+                        "\n\t- Fecha del pedido: " + pedido.getFechaPedido() +
+                        "\n\t- Estado: " + pedido.getEstadoPedido())
+        );
+    }
+
+    private static void setearValoresPedido(ResultSet rs, Pedido ped) throws SQLException {
+        ped.setIdPedido(rs.getInt("id_pedido"));
+        ped.setFechaPedido(rs.getDate("fecha"));
+        ped.setNombreCliente(rs.getString("cliente"));
+        ped.setEstadoPedido(rs.getString("estado"));
+    }
+
+    @Override
+    public Pedido traerPedidoPorId(Integer id_pedido) {
+        var pedido = new Pedido();
+
+        try (var ps = conexion.prepareStatement(TRAER_PEDIDO_POR_ID)) {
+            var rs = ps.executeQuery();
+
+            pedido.setIdPedido(rs.getInt("id_pedido"));
+            pedido.setFechaPedido(rs.getDate("fecha"));
+            pedido.setNombreCliente(rs.getString("cliente"));
+
+            var listaProductos = new ArrayList<Producto>(dao.obtenerProductosPedido(pedido.getIdPedido()));
+            pedido.setListaProductos(listaProductos);
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return pedido;
+    }
+
+    @Override
+    public ArrayList<Pedido> traerPedidosPendientes() {
+        var pedidosPendientes = new ArrayList<Pedido>();
+
+        try (var st = conexion.createStatement()) {
+            ResultSet rs = st.executeQuery(TRAER_PEDIDOS_PENDIENTES);
+
+            while (rs.next()) {
+                var pedido = new Pedido();
+
+                setearValoresPedido(rs, pedido);
+
+                pedidosPendientes.add(pedido);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return pedidosPendientes;
+    }
+
+    private static boolean insertarNuevoPedido() {
+        Boolean comprobadorPedidoCorrecto = false;
+        Boolean comprobadorValoresCorrectos = false;
+        var escaner = new Scanner(System.in);
+        var listaProductos = new ArrayList<Producto>();
+        var listadoProductosDisponibles = new ArrayList<Producto>();
+
+        /* Variables que añadir a la consulta */
+        String cliente = "";
+        String estado = "";
+        Integer producto = 0;
+        Integer opcion = 20;
+
+        limpiarPantalla();
+
+            System.out.println("Menú para insertar un nuevo pedido.");
+            System.out.print("Introduzca su nombre: ");
+            cliente = escaner.next();
+            System.out.println();
+
+            System.out.println("Introduzca estado: ");
+            estado = escaner.next();
+
+            try (var ps = conexion.prepareStatement(INSERTAR_NUEVO_PEDIDO, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, cliente);
+                ps.setString(2, estado);
+
+                if (ps.executeUpdate() == 1) {
+                    System.out.println("Pedido añadido con éxito.");
+                    System.out.println("Ahora introduzca los productos: ");
+                    while (opcion != 0) {
+                        for (int i = 0; i < dao.obtenerProductosCarta().size(); i++) {
+                            for (int j = 0; j < listaProductos.size(); i++) {
+                                if (dao.obtenerProductosCarta().get(i) != listaProductos.get(j)) {
+                                    listadoProductosDisponibles.add(dao.obtenerProductosCarta().get(i));
+                                }
+                            }
+                        }
+                        listadoProductosDisponibles.forEach(
+                                pro -> System.out.println(pro.getIdProducto() + ".- " + pro.getNombreProducto())
+                        );
+                        System.out.print("Ahora, seleccione un producto (Escribe 0 para salir: ");
+                        producto = escaner.nextInt();
+
+                        if (producto >= 1 && producto < (dao.obtenerProductosCarta().size())) {
+                            listaProductos.add(dao.obtenerProductoPorId(producto));
+                            System.out.println("Producto añadido al pedido. ");
+                        } else {
+                            System.out.println("Todos los productos añadidos.");
+                        }
+                    }
+
+
+                } else {
+                    System.out.println("No se ha podido añadir el pedido con éxito. ");
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+
+
+
+
+
+
+        return comprobadorPedidoCorrecto;
+    }
+
+    /*********** MÉTODOS DE OPCIONES DEL MENÚ ***********/
+    private static void opcionVerPedidosPendientesHoy() {
+        var pedidosPendientes = new ArrayList<Pedido>(dao.verPedidosPendientesHoy());
+
+        if (pedidosPendientes.size() > 0) {
+            pedidosPendientes.forEach(
+                    pedido -> System.out.println("Pedido con ID " + pedido.getIdPedido() + ": " +
+                            "\n\t- Cliente: " + pedido.getNombreCliente() +
+                            "\n\t- Fecha del pedido: " + pedido.getFechaPedido() +
+                            "\n\t- Estado: " + pedido.getEstadoPedido())
+            );
+        } else {
+            System.out.println("Actualmente no contamos con pedidos pendientes.");
+        }
+    }
+
+    private int opcionCambiarEstadoARecogido(Scanner sc, int opcion) {
+
+        limpiarPantalla();
+        var pedidosPendientes = new ArrayList<Pedido>(dao.traerPedidosPendientes());
+
+        if (pedidosPendientes.size() > 0) {
+            pedidosPendientes.forEach(
+                    pedido -> System.out.println("Pedido con ID " + pedido.getIdPedido() + ": " +
+                            "\n\t- Cliente: " + pedido.getNombreCliente() +
+                            "\n\t- Fecha del pedido: " + pedido.getFechaPedido() +
+                            "\n\t- Estado: " + pedido.getEstadoPedido())
+            );
+            System.out.println("Seleccione el ID del pedido: ");
+            opcion = sc.nextInt();
+
+            if (cambiarEstadoARecogido(opcion)) {
+                System.out.println("El estado el pedido ha sido modificado con éxito");
+            } else {
+                System.out.println("No se ha podido modificar el estado del pedido.");
+            }
+        } else {
+            System.out.println("Actualmente no existen pedidos pendientes.");
+        }
+
+        return opcion;
+    }
+
+    private int opcionMostrarPedidoCliente(Scanner sc, int opcion) {
+        limpiarPantalla();
+        var listadoClientes = new ArrayList<String>(verClientes());
+
+        var comprobador = false;
+
+        while (!comprobador) {
+            System.out.println("Listado de clientes: ");
+
+            for (int i = 0; i < listadoClientes.size(); i++) {
+                System.out.println((i + 1) + ".- " + listadoClientes.get(i));
+            }
+            System.out.print("Seleccione una opción: ");
+            opcion = sc.nextInt();
+            opcion -= 1;
+
+            if (opcion >= 0 && opcion < listadoClientes.size()) {
+                comprobador = true;
+            } else {
+                System.out.println("Ha elegido una opción incorrecta.");
+            }
+        }
+
+        limpiarPantalla();
+        var listadoPedidos = new ArrayList<Pedido>(verPedidosUsuarioConcreto(listadoClientes.get(opcion)));
+        System.out.println("El usuario " + listadoClientes.get(opcion) + " cuenta con " + listadoPedidos.size() + " pedidos en nuestra base de datos.");
+        for (Pedido pedido : listadoPedidos) {
+            System.out.println("\nPedido con ID " + pedido.getIdPedido() + ": " +
+                    "\n\t- Fecha del pedido: " + pedido.getFechaPedido() +
+                    "\n\t- Estado del pedido: " + pedido.getEstadoPedido() +
+                    "\n\t- Productos: ");
+            for (Producto producto : pedido.getListaProductos()) {
+                System.out.println("\t\t- " + producto.getNombreProducto() + " - Precio: " + producto.getPrecioProducto());
+            }
+        }
+        return opcion;
+    }
+
+    /*********** MÉTODOS DE UTILIDADES ***********/
+
     static public void pulsarTeclaContinuar() {
         String seguir;
         Scanner teclado = new Scanner(System.in);
@@ -1057,6 +1009,42 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
         for (int i = 0; i < 20; i++) {
             System.out.println();
         }
+    }
+
+    /*********** MENÚ VISUAL ************/
+
+    static public void mostrarMenuPrincipal() {
+        var comprobador = false;
+        var sc = new Scanner(System.in);
+        var opcion = 5;
+
+        while (!comprobador) {
+            System.out.println("¡Bienvenido al menú principal!");
+            System.out.println("Seleccione la opción que desea ver: ");
+            System.out.println("1.- Pedidos.");
+            System.out.println("2.- Productos.");
+            System.out.println("0.- Salir del programa.");
+            System.out.print("Seleccione la opción deseada: ");
+            opcion = sc.nextInt();
+
+            if (opcion >= 0 & opcion < 3) {
+                comprobador = true;
+            } else {
+                System.out.println("Ha elegido una opción incorrecta.");
+            }
+        }
+
+        if (opcion == 0) {
+            System.out.println("Saliendo del programa...");
+            System.exit(0);
+        } else if (opcion == 1) {
+            limpiarPantalla();
+            dao.switchMenuPedido();
+        } else if (opcion == 2) {
+            limpiarPantalla();
+            dao.switchMenuProducto();
+        }
+
     }
 
     static public void menuPedido() {
@@ -1131,37 +1119,104 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
 
     }
 
-    static public void mostrarMenuPrincipal() {
-        var comprobador = false;
+    public void switchMenuProducto() {
         var sc = new Scanner(System.in);
-        var opcion = 5;
 
-        while (!comprobador) {
-            System.out.println("¡Bienvenido al menú principal!");
-            System.out.println("Seleccione la opción que desea ver: ");
-            System.out.println("1.- Pedidos.");
-            System.out.println("2.- Productos.");
-            System.out.println("0.- Salir del programa.");
-            System.out.print("Seleccione la opción deseada: ");
+        Integer opcion = 1;
+
+        while (opcion != 0) {
+            menuProducto();
             opcion = sc.nextInt();
 
-            if (opcion >= 0 & opcion < 3) {
-                comprobador = true;
-            } else {
-                System.out.println("Ha elegido una opción incorrecta.");
+            switch (opcion) {
+                case 1:
+                    listarProductos();
+                    break;
+                case 2:
+                    mostrarInformacionProductoConcreto(sc);
+                    break;
+                case 3:
+                    listarProductosDisponibles();
+
+                    break;
+                case 4:
+                    listarProductosNoDisponibles();
+
+                    break;
+                case 5:
+                    insertarNuevoProducto(sc);
+
+                    break;
+                case 6:
+                    actualizarProducto();
+
+                    break;
+                case 7:
+                    cambiarEstadoProducto();
+
+                    break;
+
+                case 8:
+                    menuEstadisticasProducto();
+
+                    break;
+                case 0:
+                    limpiarPantalla();
+                    dao.mostrarMenuPrincipal();
+                    break;
+
+                default:
+                    System.out.println("Elección incorrecta.");
+                    pulsarTeclaContinuar();
             }
-        }
 
-        if (opcion == 0) {
-            System.out.println("Saliendo del programa...");
-            System.exit(0);
-        } else if (opcion == 1) {
-            limpiarPantalla();
-            dao.switchMenuPedido();
-        } else if (opcion == 2) {
-            limpiarPantalla();
-            dao.switchMenuProducto();
         }
+    }
 
+    public void switchMenuPedido() {
+        var sc = new Scanner(System.in);
+
+        var opcion = 6;
+
+        while (opcion != 0) {
+            menuPedido();
+            opcion = sc.nextInt();
+
+            switch (opcion) {
+                case 0:
+                    limpiarPantalla();
+                    mostrarMenuPrincipal();
+                    break;
+                case 1:
+                    mostrarListadoPedidos();
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
+                    opcion = 6;
+                    break;
+                case 2:
+                    opcion = opcionMostrarPedidoCliente(sc, opcion);
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
+                    opcion = 6;
+                    break;
+                case 3:
+                    opcionVerPedidosPendientesHoy();
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
+                    opcion = 6;
+                    break;
+                case 4:
+                    opcion = opcionCambiarEstadoARecogido(sc, opcion);
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
+                    opcion = 6;
+                    break;
+                case 5:
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
+                    break;
+            }
+
+        }
     }
 }
