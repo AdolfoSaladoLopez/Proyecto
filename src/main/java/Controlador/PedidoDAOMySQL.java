@@ -8,8 +8,6 @@ import java.util.ArrayList;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
-import static java.util.Collections.addAll;
-
 public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
     private static final Connection conexion = Conexion.getConexion();
     private static final PedidoDAOMySQL dao = new PedidoDAOMySQL();
@@ -214,13 +212,18 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
     public Boolean insertarNuevoProducto(Producto producto) {
         Boolean resultado = false;
 
-        try (var ps = conexion.prepareStatement(INSERTAR_NUEVO_PRODUCTO)) {
+        try (var ps = conexion.prepareStatement(INSERTAR_NUEVO_PRODUCTO, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, producto.getNombreProducto());
             ps.setString(2, producto.getTipoProducto());
             ps.setFloat(3, producto.getPrecioProducto());
             ps.setBoolean(4, producto.getDisponibilidadProducto());
 
             if (ps.executeUpdate() == 1) {
+                var rs = ps.getGeneratedKeys();
+                rs.next();
+                producto.setIdProducto(rs.getInt(1));
+
+                System.out.println(producto);
                 resultado = true;
             }
         } catch (SQLException e) {
@@ -233,8 +236,7 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
     @Override
     public Boolean cambiarDisponibilidadProducto(Integer idProducto, Boolean disponibilidad) {
         Boolean resultado = false;
-        System.out.println(idProducto);
-        System.out.println(disponibilidad);
+
 
         if (disponibilidad) {
             disponibilidad = false;
@@ -378,8 +380,9 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
 
 
         if (dao.cambiarDisponibilidadProducto(eleccion, producto.getDisponibilidadProducto())) {
-            System.out.println("Producto cambiado.");
-
+            limpiarPantalla();
+            System.out.println("Producto modificado con éxito:");
+            System.out.println(dao.obtenerProductoPorId(eleccion));
 
         } else {
             System.out.println("No se ha podido modificar el estado del producto");
@@ -629,6 +632,8 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
         } else {
             System.out.println("Actualmente todos los productos están disponibles.");
         }
+
+        listadoProductos.removeAll(listadoProductos);
     }
 
     private static void listarProductosDisponibles() {
@@ -644,30 +649,36 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
         } else {
             System.out.println("Actualmente ningún producto está disponible.");
         }
+
+        listadoProductos.removeAll(listadoProductos);
     }
 
     private static void mostrarInformacionProductoConcreto(Scanner sc) {
+        listadoProductos.removeAll(listadoProductos);
         System.out.println();
         listarProductos();
 
         System.out.print("¿De qué producto quiere ver información?: ");
         Integer eleccionProducto = sc.nextInt();
         System.out.println(eleccionProducto);
-        if (eleccionProducto > 0 && eleccionProducto <= listadoProductos.size()) {
+        if (eleccionProducto > 0 && eleccionProducto <= dao.obtenerProductosCarta().size()) {
             var producto = dao.obtenerProductoPorId(eleccionProducto);
 
             System.out.println(producto);
         } else {
             System.out.println("No ha introducido un número correcto.");
         }
+
+        listadoProductos.removeAll(listadoProductos);
     }
 
     private static void listarProductos() {
+        listadoProductos.removeAll(listadoProductos);
         var listadoProductos = new ArrayList<Producto>(dao.obtenerProductosCarta());
         System.out.println("Listado de producto: ");
         listadoProductos.forEach(
-                producto -> System.out
-                        .println("\t" + producto.getIdProducto() + ".- " + producto.getNombreProducto()));
+                producto -> System.out.println("\t" + producto.getIdProducto() + ".- " + producto.getNombreProducto() + ". Disponibilidad: " +
+                        (producto.getDisponibilidadProducto() ? "Disponible" : "No disponible")));
     }
 
     private void setearValoresProducto(ResultSet rs, Producto producto) throws SQLException {
@@ -940,11 +951,11 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
                             "\n\t- Fecha del pedido: " + pedido.getFechaPedido() +
                             "\n\t- Estado: " + pedido.getEstadoPedido())
             );
-            System.out.println("Seleccione el ID del pedido: ");
+            System.out.print("Seleccione el ID del pedido: ");
             opcion = sc.nextInt();
 
             if (cambiarEstadoARecogido(opcion)) {
-                System.out.println("El estado el pedido ha sido modificado con éxito");
+                System.out.println("El estado del pedido ha sido modificado con éxito");
             } else {
                 System.out.println("No se ha podido modificar el estado del pedido.");
             }
@@ -1024,7 +1035,7 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
             System.out.println("1.- Pedidos.");
             System.out.println("2.- Productos.");
             System.out.println("0.- Salir del programa.");
-            System.out.print("Seleccione la opción deseada: ");
+            System.out.print("Seleccione opción: ");
             opcion = sc.nextInt();
 
             if (opcion >= 0 & opcion < 3) {
@@ -1073,7 +1084,7 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
         System.out.print("Seleccione opción: ");
     }
 
-    private static void menuEstadisticasProducto() {
+    private static void switchMenuEstadisticas() {
         Scanner sc = new Scanner(System.in);
         Boolean comprobador = false;
         Integer opcion = 0;
@@ -1083,7 +1094,7 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
             System.out.println("1.- Ver producto más caro.");
             System.out.println("2.- Ver producto más barato.");
             System.out.println("3.- Volver al menú de producto.");
-            System.out.print("Elija una opción: ");
+            System.out.print("Seleccione opción: ");
             opcion = sc.nextInt();
 
             if (opcion >= 1 && opcion <= 3) {
@@ -1100,11 +1111,15 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
                 dao.traerProductosCaros();
                 pulsarTeclaContinuar();
                 limpiarPantalla();
-                menuEstadisticasProducto();
+                switchMenuEstadisticas();
 
                 break;
             case 2:
+                limpiarPantalla();
                 dao.traerProductosBaratos();
+                pulsarTeclaContinuar();
+                limpiarPantalla();
+                switchMenuEstadisticas();
                 break;
             case 3:
                 System.out.println("Volviendo al menú de producto. ");
@@ -1130,35 +1145,54 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
 
             switch (opcion) {
                 case 1:
+                    limpiarPantalla();
+                    System.out.println("Estos son todos los productos de la carta: ");
                     listarProductos();
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
                     break;
                 case 2:
+                    limpiarPantalla();
+                    System.out.println("Esta es la información del producto seleccionado: ");
                     mostrarInformacionProductoConcreto(sc);
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
                     break;
                 case 3:
+                    limpiarPantalla();
                     listarProductosDisponibles();
-
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
                     break;
                 case 4:
+                    limpiarPantalla();
                     listarProductosNoDisponibles();
-
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
                     break;
                 case 5:
+                    limpiarPantalla();
                     insertarNuevoProducto(sc);
-
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
                     break;
                 case 6:
+                    limpiarPantalla();
                     actualizarProducto();
-
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
                     break;
                 case 7:
+                    limpiarPantalla();
                     cambiarEstadoProducto();
-
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
                     break;
-
                 case 8:
-                    menuEstadisticasProducto();
-
+                    limpiarPantalla();
+                    switchMenuEstadisticas();
+                    pulsarTeclaContinuar();
+                    limpiarPantalla();
                     break;
                 case 0:
                     limpiarPantalla();
@@ -1168,6 +1202,7 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
                 default:
                     System.out.println("Elección incorrecta.");
                     pulsarTeclaContinuar();
+                    limpiarPantalla();
             }
 
         }
@@ -1188,24 +1223,29 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
                     mostrarMenuPrincipal();
                     break;
                 case 1:
+                    limpiarPantalla();
+                    System.out.println("Estos son todos los pedidos: ");
                     mostrarListadoPedidos();
                     pulsarTeclaContinuar();
                     limpiarPantalla();
                     opcion = 6;
                     break;
                 case 2:
+                    limpiarPantalla();
                     opcion = opcionMostrarPedidoCliente(sc, opcion);
                     pulsarTeclaContinuar();
                     limpiarPantalla();
                     opcion = 6;
                     break;
                 case 3:
+                    limpiarPantalla();
                     opcionVerPedidosPendientesHoy();
                     pulsarTeclaContinuar();
                     limpiarPantalla();
                     opcion = 6;
                     break;
                 case 4:
+                    limpiarPantalla();
                     opcion = opcionCambiarEstadoARecogido(sc, opcion);
                     pulsarTeclaContinuar();
                     limpiarPantalla();
