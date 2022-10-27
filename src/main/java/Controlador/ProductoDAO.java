@@ -12,6 +12,7 @@ public interface ProductoDAO extends Serializable {
     ArrayList<Producto> obtenerProductosNoDisponible();
     Boolean insertarNuevoProducto(Producto producto);
     Boolean cambiarDisponibilidadProducto(Integer idProducto, Boolean disponibilidad);
+    ArrayList<Producto> obtenerProductosPedido(Integer id_pedido);
     void traerTipoProductos();
     void traerProductosCaros();
     void traerProductosBaratos();

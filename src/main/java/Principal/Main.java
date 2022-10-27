@@ -7,7 +7,7 @@ public class Main {
     public static PedidoDAOMySQL dao = new PedidoDAOMySQL();
 
     public static void main(String[] args) {
-       dao.mostrarMenu();
+       dao.mostrarMenuPrincipal();
 
 
        

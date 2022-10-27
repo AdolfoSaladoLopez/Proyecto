@@ -50,11 +50,11 @@ public class Producto {
 
     @Override
     public String toString() {
-        return "Producto: \n" +
-                "\t- ID del producto: " + this.idProducto +
-                "\n\t- Nombre del producto: " + this.nombreProducto +
-                "\n\t- Tipo de producto: " + this.tipoProducto +
-                "\n\t- Precio del producto: " + this.precioProducto +
-                "\n\t- Disponibilidad: " + (getDisponibilidadProducto() ? "Disponible" : "No disponible");
+        return "\n\tProducto: \n" +
+                "\t\t- ID del producto: " + this.idProducto +
+                "\n\t\t- Nombre del producto: " + this.nombreProducto +
+                "\n\t\t- Tipo de producto: " + this.tipoProducto +
+                "\n\t\t- Precio del producto: " + this.precioProducto +
+                "\n\t\t- Disponibilidad: " + (getDisponibilidadProducto() ? "Disponible" : "No disponible");
     }
 }
