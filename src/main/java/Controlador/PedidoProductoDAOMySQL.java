@@ -123,12 +123,7 @@ public class PedidoProductoDAOMySQL implements PedidoDAO, ProductoDAO {
             INSERT INTO pedido (id_pedido, fecha, cliente, estado) VALUES (NULL, CURDATE(), ?, 'Pendiente');
             """;
 
-    /* SENTENCIAS ENTRADA */
-    private static final String INSERTAR_PEDIDOS_PRODUCTOS_ENTRADA_QUERY = """
-            INSERT INTO entrada (id_pedido, id_producto) VALUES (?, ?);
-            """;
-
-    /* METODOS DE PRODUCTO */
+    /*********** MÉTODOS DE PRODUCTOS ***********/
     @Override
     public ArrayList<Producto> obtenerProductosCarta() {
 
@@ -694,6 +689,7 @@ public class PedidoProductoDAOMySQL implements PedidoDAO, ProductoDAO {
         producto.setDisponibilidadProducto(rs.getBoolean("disponibilidad"));
     }
 
+    /*********** MÉTODOS DE PEDIDO ***********/
     @Override
     public Boolean cambiarEstadoARecogido(Integer id) {
         Boolean resultado = false;
@@ -709,11 +705,6 @@ public class PedidoProductoDAOMySQL implements PedidoDAO, ProductoDAO {
             throw new RuntimeException(e);
         }
         return resultado;
-    }
-
-    @Override
-    public void eliminarPedido(Pedido pedido) {
-
     }
 
     @Override

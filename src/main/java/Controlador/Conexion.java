@@ -1,6 +1,5 @@
 package Controlador;
 
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.sql.Connection;
@@ -27,7 +26,6 @@ public class Conexion {
         } catch (IOException ex) {
             System.out.println(ex);
         }
-
     }
 
     public static Connection getConexion() {
