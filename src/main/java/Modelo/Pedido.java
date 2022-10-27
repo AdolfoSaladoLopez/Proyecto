@@ -3,8 +3,6 @@ package Modelo;
 import java.sql.Date;
 import java.util.ArrayList;
 
-import Controlador.PedidoDAOMySQL;
-
 public class Pedido {
     private Integer idPedido;
     private Date fechaPedido;

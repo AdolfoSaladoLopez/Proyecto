@@ -8,9 +8,9 @@ import java.util.ArrayList;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
-public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
+public class PedidoProductoDAOMySQL implements PedidoDAO, ProductoDAO {
     private static final Connection conexion = Conexion.getConexion();
-    private static final PedidoDAOMySQL dao = new PedidoDAOMySQL();
+    private static final PedidoProductoDAOMySQL dao = new PedidoProductoDAOMySQL();
     public static ArrayList<Producto> listadoProductos = new ArrayList<>();
     public static ArrayList<String> tipos = new ArrayList<>();
 
@@ -120,7 +120,12 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
             """;
 
     private static final String INSERTAR_NUEVO_PEDIDO = """
-            INSERT INTO pedido (cliente, estado) VALUES ((?), (?));
+            INSERT INTO pedido (id_pedido, fecha, cliente, estado) VALUES (NULL, CURDATE(), ?, 'Pendiente');
+            """;
+
+    /* SENTENCIAS ENTRADA */
+    private static final String INSERTAR_PEDIDOS_PRODUCTOS_ENTRADA_QUERY = """
+            INSERT INTO entrada (id_pedido, id_producto) VALUES (?, ?);
             """;
 
     /* METODOS DE PRODUCTO */
@@ -689,13 +694,6 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
         producto.setDisponibilidadProducto(rs.getBoolean("disponibilidad"));
     }
 
-    /* MÉTODOS PEDIDOS */
-    @Override
-    public Boolean insertarNuevoPedido(Pedido nuevoPedido) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
     @Override
     public Boolean cambiarEstadoARecogido(Integer id) {
         Boolean resultado = false;
@@ -816,18 +814,23 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
     }
 
     @Override
-    public Pedido traerPedidoPorId(Integer id_pedido) {
+    public Pedido obtenerPedidoPorId(Integer id_pedido) {
         var pedido = new Pedido();
+        var listaProductos = new ArrayList<Producto>();
 
         try (var ps = conexion.prepareStatement(TRAER_PEDIDO_POR_ID)) {
             var rs = ps.executeQuery();
 
-            pedido.setIdPedido(rs.getInt("id_pedido"));
+            pedido.setIdPedido(id_pedido);
             pedido.setFechaPedido(rs.getDate("fecha"));
             pedido.setNombreCliente(rs.getString("cliente"));
+            pedido.setEstadoPedido(rs.getString("estado"));
 
-            var listaProductos = new ArrayList<Producto>(dao.obtenerProductosPedido(pedido.getIdPedido()));
-            pedido.setListaProductos(listaProductos);
+            if (listaProductos.addAll(dao.obtenerProductosPedido(pedido.getIdPedido()))) {
+                pedido.setListaProductos(listaProductos);
+            } else {
+                pedido.setListaProductos(null);
+            }
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -855,16 +858,15 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
         return pedidosPendientes;
     }
 
-    private static boolean insertarNuevoPedido() {
-        Boolean comprobadorPedidoCorrecto = false;
-        Boolean comprobadorValoresCorrectos = false;
+    @Override
+    public void insertarNuevoPedido() {
         var escaner = new Scanner(System.in);
         var listaProductos = new ArrayList<Producto>();
         var listadoProductosDisponibles = new ArrayList<Producto>();
 
         /* Variables que añadir a la consulta */
         String cliente = "";
-        String estado = "";
+        Integer idPedido = 0;
         Integer producto = 0;
         Integer opcion = 20;
 
@@ -872,41 +874,18 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
 
             System.out.println("Menú para insertar un nuevo pedido.");
             System.out.print("Introduzca su nombre: ");
-            cliente = escaner.next();
+            cliente = escaner.nextLine();
             System.out.println();
 
-            System.out.println("Introduzca estado: ");
-            estado = escaner.next();
-
-            try (var ps = conexion.prepareStatement(INSERTAR_NUEVO_PEDIDO, Statement.RETURN_GENERATED_KEYS)) {
+            try (var ps = conexion.prepareStatement(INSERTAR_NUEVO_PEDIDO, PreparedStatement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, cliente);
-                ps.setString(2, estado);
 
                 if (ps.executeUpdate() == 1) {
-                    System.out.println("Pedido añadido con éxito.");
-                    System.out.println("Ahora introduzca los productos: ");
-                    while (opcion != 0) {
-                        for (int i = 0; i < dao.obtenerProductosCarta().size(); i++) {
-                            for (int j = 0; j < listaProductos.size(); i++) {
-                                if (dao.obtenerProductosCarta().get(i) != listaProductos.get(j)) {
-                                    listadoProductosDisponibles.add(dao.obtenerProductosCarta().get(i));
-                                }
-                            }
-                        }
-                        listadoProductosDisponibles.forEach(
-                                pro -> System.out.println(pro.getIdProducto() + ".- " + pro.getNombreProducto())
-                        );
-                        System.out.print("Ahora, seleccione un producto (Escribe 0 para salir: ");
-                        producto = escaner.nextInt();
+                    var rs = ps.getGeneratedKeys();
+                    rs.next();
+                    idPedido = rs.getInt(1);
 
-                        if (producto >= 1 && producto < (dao.obtenerProductosCarta().size())) {
-                            listaProductos.add(dao.obtenerProductoPorId(producto));
-                            System.out.println("Producto añadido al pedido. ");
-                        } else {
-                            System.out.println("Todos los productos añadidos.");
-                        }
-                    }
-
+                    System.out.println("El pedido con el ID " + idPedido + " ha sido añadido con éxito.");
 
                 } else {
                     System.out.println("No se ha podido añadir el pedido con éxito. ");
@@ -914,13 +893,6 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
-
-
-
-
-
-
-        return comprobadorPedidoCorrecto;
     }
 
     /*********** MÉTODOS DE OPCIONES DEL MENÚ ***********/
@@ -943,7 +915,7 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
 
         limpiarPantalla();
         var pedidosPendientes = new ArrayList<Pedido>(dao.traerPedidosPendientes());
-
+        System.out.println("Estos son los pedidos que están pendientes: ");
         if (pedidosPendientes.size() > 0) {
             pedidosPendientes.forEach(
                     pedido -> System.out.println("Pedido con ID " + pedido.getIdPedido() + ": " +
@@ -1065,6 +1037,7 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
         System.out.println("2.- Mostrar pedido de un cliente concreto. ");
         System.out.println("3.- Ver pedidos pendientes de hoy.");
         System.out.println("4.- Cambiar estado a recogido.");
+        System.out.println("5.- Insertar un nuevo pedido.");
         System.out.println("0.- Volver al menú principal.");
         System.out.print("Seleccione opción: ");
     }
@@ -1252,6 +1225,8 @@ public class PedidoDAOMySQL implements PedidoDAO, ProductoDAO {
                     opcion = 6;
                     break;
                 case 5:
+                    limpiarPantalla();
+                    insertarNuevoPedido();
                     pulsarTeclaContinuar();
                     limpiarPantalla();
                     break;

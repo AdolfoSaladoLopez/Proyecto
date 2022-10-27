@@ -1,10 +1,10 @@
 package Principal;
 
-import Controlador.PedidoDAOMySQL;
+import Controlador.PedidoProductoDAOMySQL;
 
 public class Main {
 
-    public static PedidoDAOMySQL dao = new PedidoDAOMySQL();
+    public static PedidoProductoDAOMySQL dao = new PedidoProductoDAOMySQL();
 
     public static void main(String[] args) {
        dao.mostrarMenuPrincipal();

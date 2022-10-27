@@ -12,7 +12,6 @@ public class Conexion {
     private static Connection conexion;
 
     static {
-
         var conf = new Properties();
 
         try {
